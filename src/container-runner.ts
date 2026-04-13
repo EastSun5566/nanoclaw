@@ -279,6 +279,12 @@ async function buildContainerArgs(
   if (process.env.GITHUB_TOKEN) {
     args.push('-e', `GITHUB_TOKEN=${process.env.GITHUB_TOKEN}`);
   }
+  if (process.env.HMD_API_ACCESS_TOKEN) {
+    args.push('-e', `HMD_API_ACCESS_TOKEN=${process.env.HMD_API_ACCESS_TOKEN}`);
+  }
+  if (process.env.HMD_API_ENDPOINT_URL) {
+    args.push('-e', `HMD_API_ENDPOINT_URL=${process.env.HMD_API_ENDPOINT_URL}`);
+  }
   if (process.env.NANOCLAW_SDK) {
     args.push('-e', `NANOCLAW_SDK=${process.env.NANOCLAW_SDK}`);
   }
