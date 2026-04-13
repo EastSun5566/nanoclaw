@@ -17,20 +17,26 @@ npm install -g @hackmd/hackmd-cli
 
 ### Configure Access Token
 
-Create an API token at [hackmd.io/settings#api](https://hackmd.io/settings#api), then configure:
+Create an API token at [hackmd.io/settings#api](https://hackmd.io/settings#api).
 
-```bash
-# Interactive login (saves to ~/.hackmd/config.json)
-hackmd-cli login
+**For NanoClaw containers:** Add the token to the host `.env` file — it is automatically injected into all agent containers by the container runner:
 
-# Or via environment variable
-export HMD_API_ACCESS_TOKEN=YOUR_TOKEN
+```
+HMD_API_ACCESS_TOKEN=YOUR_TOKEN
 ```
 
-For HackMD EE instances, also set the API endpoint:
+For HackMD EE instances also add:
+
+```
+HMD_API_ENDPOINT_URL=https://your.hackmd-ee.endpoint
+```
+
+Restart the service after editing `.env`. The agent can then use `hackmd-cli` immediately — no manual `export` or login inside the container is needed.
+
+**For standalone use outside containers:** authenticate via CLI:
 
 ```bash
-export HMD_API_ENDPOINT_URL=https://your.hackmd-ee.endpoint
+hackmd-cli login
 ```
 
 ## Commands
@@ -102,10 +108,10 @@ hackmd-cli export --noteId=<id>    # Export note content to stdout
 
 Available permission values:
 
-| Permission Type | Values |
-|----------------|--------|
-| `--readPermission` | `owner`, `signed_in`, `guest` |
-| `--writePermission` | `owner`, `signed_in`, `guest` |
+| Permission Type       | Values                                                           |
+| --------------------- | ---------------------------------------------------------------- |
+| `--readPermission`    | `owner`, `signed_in`, `guest`                                    |
+| `--writePermission`   | `owner`, `signed_in`, `guest`                                    |
 | `--commentPermission` | `disabled`, `forbidden`, `owners`, `signed_in_users`, `everyone` |
 
 ## Output Formats

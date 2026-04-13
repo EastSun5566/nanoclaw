@@ -98,12 +98,26 @@ export async function run(_args: string[]): Promise<void> {
 
   // 3. Check credentials
   let credentials = 'missing';
+  let nanoclawSdk = 'claude';
+  let hmdConfigured = false;
   const envFile = path.join(projectRoot, '.env');
   if (fs.existsSync(envFile)) {
     const envContent = fs.readFileSync(envFile, 'utf-8');
     if (/^(CLAUDE_CODE_OAUTH_TOKEN|ANTHROPIC_API_KEY|ONECLI_URL)=/m.test(envContent)) {
       credentials = 'configured';
     }
+    const sdkMatch = envContent.match(/^NANOCLAW_SDK=(.+)$/m);
+    if (sdkMatch) nanoclawSdk = sdkMatch[1].trim().toLowerCase();
+    // Copilot backend: COPILOT_GITHUB_TOKEN in .env or OAuth dir on disk
+    if (
+      nanoclawSdk === 'copilot' &&
+      credentials === 'missing' &&
+      (/^COPILOT_GITHUB_TOKEN=.+/m.test(envContent) ||
+        fs.existsSync(path.join(homeDir, '.copilot')))
+    ) {
+      credentials = 'configured';
+    }
+    hmdConfigured = /^HMD_API_ACCESS_TOKEN=.+/m.test(envContent);
   }
 
   // 4. Check channel auth (detect configured channels by credentials)
@@ -180,6 +194,8 @@ export async function run(_args: string[]): Promise<void> {
     SERVICE: service,
     CONTAINER_RUNTIME: containerRuntime,
     CREDENTIALS: credentials,
+    NANOCLAW_SDK: nanoclawSdk,
+    HMD_CONFIGURED: hmdConfigured,
     CONFIGURED_CHANNELS: configuredChannels.join(','),
     CHANNEL_AUTH: JSON.stringify(channelAuth),
     REGISTERED_GROUPS: registeredGroups,

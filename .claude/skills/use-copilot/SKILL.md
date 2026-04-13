@@ -86,7 +86,7 @@ docker info &>/dev/null && echo "docker" || echo "apple-container"
 **Step 3: Create the credential directory on the host**
 
 ```bash
-mkdir -p ~/.nanoclaw-copilot
+mkdir -p ~/.copilot
 ```
 
 **Step 4: Run one-off interactive login**
@@ -95,7 +95,7 @@ For Docker:
 
 ```bash
 docker run -it --rm \
-  -v "$HOME/.nanoclaw-copilot:/home/node/.config/github-copilot" \
+  -v "$HOME/.copilot:/home/node/.copilot" \
   --user node \
   nanoclaw-agent \
   bash -c "/app/node_modules/.bin/copilot login"
@@ -105,7 +105,7 @@ For Apple Container:
 
 ```bash
 container run -it --rm \
-  --volume "$HOME/.nanoclaw-copilot:/home/node/.config/github-copilot" \
+  --volume "$HOME/.copilot:/home/node/.copilot" \
   --user node \
   nanoclaw-agent \
   bash -c "/app/node_modules/.bin/copilot login"
@@ -116,41 +116,21 @@ Follow the device flow: it prints a code and a URL. Open the URL in your browser
 **Step 5: Verify credentials were saved**
 
 ```bash
-ls ~/.nanoclaw-copilot/
+ls ~/.copilot/
 ```
 
 You should see a `hosts.json` file (or similar). If the directory is empty, the binary may store creds in a different path — check inside the container:
 
 ```bash
 docker run -it --rm --user node nanoclaw-agent bash -c \
-  "ls /home/node/.config/ /home/node/.local/share/ 2>/dev/null"
+  "ls /home/node/.copilot/ /home/node/.config/ /home/node/.local/share/ 2>/dev/null"
 ```
 
 Identify the correct path and repeat Step 3-4 with the matching host-to-container mount.
 
-**Step 6: Enable the credential mount**
+**Step 6: Credential mount is automatic**
 
-The host directory `~/.nanoclaw-copilot` will be passed into all future containers. Add to `.env`:
-
-```
-COPILOT_OAUTH_DIR=~/.nanoclaw-copilot
-```
-
-Then update `src/container-runner.ts` — in `buildVolumeMounts`, add:
-
-```typescript
-const copilotOAuthDir = process.env.COPILOT_OAUTH_DIR?.replace(
-  /^~/,
-  process.env.HOME || '/root',
-);
-if (copilotOAuthDir && fs.existsSync(copilotOAuthDir)) {
-  mounts.push({
-    hostPath: copilotOAuthDir,
-    containerPath: '/home/node/.config/github-copilot',
-    readonly: true,
-  });
-}
-```
+The `~/.copilot` directory is automatically detected and mounted into containers by `container-runner.ts` — no `.env` variable or code change is needed. The credentials will be available to the agent on the next container run.
 
 ---
 

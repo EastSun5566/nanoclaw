@@ -3,6 +3,7 @@
  * Replaces 01-check-environment.sh
  */
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import Database from 'better-sqlite3';
@@ -45,6 +46,20 @@ export async function run(_args: string[]): Promise<void> {
   const authDir = path.join(projectRoot, 'store', 'auth');
   const hasAuth = fs.existsSync(authDir) && fs.readdirSync(authDir).length > 0;
 
+  // Detect SDK backend and optional integrations from .env
+  let nanoclawSdk = 'claude';
+  let copilotConfigured = false;
+  let hmdConfigured = false;
+  if (hasEnv) {
+    const envContent = fs.readFileSync(path.join(projectRoot, '.env'), 'utf-8');
+    const sdkMatch = envContent.match(/^NANOCLAW_SDK=(.+)$/m);
+    if (sdkMatch) nanoclawSdk = sdkMatch[1].trim().toLowerCase();
+    copilotConfigured =
+      /^COPILOT_GITHUB_TOKEN=.+/m.test(envContent) ||
+      fs.existsSync(path.join(os.homedir(), '.copilot'));
+    hmdConfigured = /^HMD_API_ACCESS_TOKEN=.+/m.test(envContent);
+  }
+
   let hasRegisteredGroups = false;
   // Check JSON file first (pre-migration)
   if (fs.existsSync(path.join(projectRoot, 'data', 'registered_groups.json'))) {
@@ -75,6 +90,9 @@ export async function run(_args: string[]): Promise<void> {
       hasEnv,
       hasAuth,
       hasRegisteredGroups,
+      nanoclawSdk,
+      copilotConfigured,
+      hmdConfigured,
     },
     'Environment check complete',
   );
@@ -88,6 +106,9 @@ export async function run(_args: string[]): Promise<void> {
     HAS_ENV: hasEnv,
     HAS_AUTH: hasAuth,
     HAS_REGISTERED_GROUPS: hasRegisteredGroups,
+    NANOCLAW_SDK: nanoclawSdk,
+    COPILOT_CONFIGURED: copilotConfigured,
+    HMD_CONFIGURED: hmdConfigured,
     STATUS: 'success',
     LOG: 'logs/setup.log',
   });
