@@ -16,6 +16,12 @@ vi.mock('./config.js', () => ({
   IDLE_TIMEOUT: 1800000, // 30min
   ONECLI_URL: 'http://localhost:10254',
   TIMEZONE: 'America/Los_Angeles',
+  GITHUB_TOKEN: undefined,
+  HMD_API_ACCESS_TOKEN: undefined,
+  HMD_API_ENDPOINT_URL: undefined,
+  NANOCLAW_SDK: undefined,
+  COPILOT_GITHUB_TOKEN: undefined,
+  COPILOT_MODEL: undefined,
 }));
 
 // Mock logger

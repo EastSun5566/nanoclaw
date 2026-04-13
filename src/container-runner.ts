@@ -292,6 +292,36 @@ async function buildContainerArgs(
     args.push('-e', `COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN}`);
   if (COPILOT_MODEL) args.push('-e', `COPILOT_MODEL=${COPILOT_MODEL}`);
 
+  // Exempt HackMD API endpoints from the OneCLI HTTPS proxy.
+  // onecli.applyContainerConfig sets HTTPS_PROXY → its gateway, which only
+  // handles Anthropic. undici (used by hackmd-cli) routes all traffic through
+  // that proxy, causing the HackMD token to appear invalid even when it is not.
+  // NO_PROXY / no_proxy tells undici to connect directly for these hosts.
+  const hmdBypassHosts = ['api.hackmd.io'];
+  if (HMD_API_ENDPOINT_URL) {
+    try {
+      hmdBypassHosts.push(new URL(HMD_API_ENDPOINT_URL).hostname);
+    } catch {
+      // invalid HMD_API_ENDPOINT_URL — skip
+    }
+  }
+  // Merge into any NO_PROXY / no_proxy already inserted by OneCLI.
+  let noProxySet = false;
+  for (let i = 1; i < args.length; i++) {
+    if (
+      args[i - 1] === '-e' &&
+      (args[i].startsWith('NO_PROXY=') || args[i].startsWith('no_proxy='))
+    ) {
+      const eq = args[i].indexOf('=');
+      const existing = args[i].slice(eq + 1);
+      args[i] = `${args[i].slice(0, eq + 1)}${existing},${hmdBypassHosts.join(',')}`;
+      if (args[i].startsWith('NO_PROXY=')) noProxySet = true;
+    }
+  }
+  if (!noProxySet) {
+    args.push('-e', `NO_PROXY=${hmdBypassHosts.join(',')}`);
+  }
+
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());
 
