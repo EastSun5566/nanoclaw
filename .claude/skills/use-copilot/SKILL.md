@@ -45,7 +45,7 @@ The SDK reads `COPILOT_GITHUB_TOKEN` from the environment.
 
 **Token requirements:**
 
-- Must be a **fine-grained PAT** or **OAuth token** (`gho_` / `ghu_` prefix)
+- Must be a **fine-grained PAT** (`github_pat_` prefix) or **OAuth token** (`gho_` / `ghu_` prefix)
 - Classic PATs (`ghp_` prefix) are **not supported** by the Copilot SDK
 - Your GitHub account must have an active Copilot subscription
 
@@ -202,20 +202,23 @@ npm run dev
 
 ## Phase 4: Verify
 
-Send a test message from your channel. Check logs for confirmation:
+Send a test message from your channel. Check the main log:
 
 ```bash
-tail -f logs/nanoclaw.log | grep -E "SDK backend|Copilot auth|Copilot session"
+tail -f logs/nanoclaw.log
 ```
 
-You should see:
+You should see the message received, a container spawned, agent output produced, and the reply sent — for example:
 
 ```
-Using SDK backend: copilot
-Copilot auth: using COPILOT_GITHUB_TOKEN env var
-Creating Copilot session (model: gpt-4.1, resume: new)
-Copilot session ready: <sessionId>
+Telegram message stored
+Processing messages  group: "telegram_main"
+Spawning container agent  group: "telegram_main"
+Agent output: N chars
+Telegram message sent
 ```
+
+Note: Copilot-specific lines (`SDK backend`, `Copilot session`) are printed inside the container and do not appear in the main log. A successful reply means Copilot is working.
 
 ## Switching Back to Claude
 

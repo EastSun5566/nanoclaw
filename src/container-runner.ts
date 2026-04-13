@@ -282,6 +282,9 @@ async function buildContainerArgs(
   if (process.env.NANOCLAW_SDK) {
     args.push('-e', `NANOCLAW_SDK=${process.env.NANOCLAW_SDK}`);
   }
+  if (process.env.COPILOT_GITHUB_TOKEN) {
+    args.push('-e', `COPILOT_GITHUB_TOKEN=${process.env.COPILOT_GITHUB_TOKEN}`);
+  }
   if (process.env.COPILOT_MODEL) {
     args.push('-e', `COPILOT_MODEL=${process.env.COPILOT_MODEL}`);
   }
