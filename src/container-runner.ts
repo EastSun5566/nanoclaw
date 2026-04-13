@@ -229,6 +229,15 @@ function buildVolumeMounts(
     readonly: false,
   });
 
+  const copilotAuthDir = path.join(process.env.HOME || '/root', '.copilot');
+  if (fs.existsSync(copilotAuthDir)) {
+    mounts.push({
+      hostPath: copilotAuthDir,
+      containerPath: '/home/node/.copilot',
+      readonly: true,
+    });
+  }
+
   // Additional mounts validated against external allowlist (tamper-proof from containers)
   if (group.containerConfig?.additionalMounts) {
     const validatedMounts = validateAdditionalMounts(
@@ -265,6 +274,16 @@ async function buildContainerArgs(
       { containerName },
       'OneCLI gateway not reachable — container will have no credentials',
     );
+  }
+
+  if (process.env.GITHUB_TOKEN) {
+    args.push('-e', `GITHUB_TOKEN=${process.env.GITHUB_TOKEN}`);
+  }
+  if (process.env.NANOCLAW_SDK) {
+    args.push('-e', `NANOCLAW_SDK=${process.env.NANOCLAW_SDK}`);
+  }
+  if (process.env.COPILOT_MODEL) {
+    args.push('-e', `COPILOT_MODEL=${process.env.COPILOT_MODEL}`);
   }
 
   // Runtime-specific args for host gateway resolution
