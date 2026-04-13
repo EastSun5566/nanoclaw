@@ -64,12 +64,11 @@ export async function runCopilotQuery(
 ): Promise<CopilotQueryResult> {
   const client = getCopilotClient();
 
-  if (process.env.GITHUB_TOKEN) {
-    log('Copilot auth: using GITHUB_TOKEN env var');
-  } else if (fs.existsSync('/home/node/.copilot')) {
-    log('Copilot auth: using OAuth credentials from ~/.copilot/');
+  if (process.env.COPILOT_GITHUB_TOKEN || process.env.GH_TOKEN || process.env.GITHUB_TOKEN) {
+    const which = process.env.COPILOT_GITHUB_TOKEN ? 'COPILOT_GITHUB_TOKEN' : process.env.GH_TOKEN ? 'GH_TOKEN' : 'GITHUB_TOKEN';
+    log(`Copilot auth: using ${which} env var`);
   } else {
-    log('Warning: No Copilot authentication found (set GITHUB_TOKEN or run copilot auth login)');
+    log('Copilot auth: using signed-in user credentials (keychain/CLI fallback)');
   }
 
   const mcpServers: Record<string, MCPServerConfig> = {

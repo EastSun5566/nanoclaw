@@ -1,11 +1,16 @@
 ---
 name: use-copilot
-description: Switch the agent runner from Claude to GitHub Copilot. Sets NANOCLAW_SDK=copilot and configures credentials (GITHUB_TOKEN or OAuth login). Use when the user wants to run agents with GitHub Copilot instead of Anthropic Claude. Triggers on "use copilot", "switch to copilot", "copilot backend", "use github copilot".
+description: Switch the agent runner from Claude to GitHub Copilot. Sets NANOCLAW_SDK=copilot and configures credentials (COPILOT_GITHUB_TOKEN). Use when the user wants to run agents with GitHub Copilot instead of Anthropic Claude. Triggers on "use copilot", "switch to copilot", "copilot backend", "use github copilot".
 ---
 
 # Use GitHub Copilot as Agent Backend
 
 Switches agent containers from the Anthropic Claude Agent SDK to the GitHub Copilot SDK. No code changes required — support is already built in. This skill only handles configuration and credentials.
+
+Two authentication options:
+
+- **Token** (recommended) — paste a GitHub PAT into `.env`. Works immediately, no interactive setup.
+- **OAuth device flow** — run `copilot login` interactively. The `copilot` binary ships inside the container as a dependency of `@github/copilot-sdk`. It does NOT exist on the host.
 
 ## Phase 1: Pre-flight
 
@@ -23,46 +28,135 @@ If `MISSING`, run `/update-nanoclaw` first to pull the latest changes, then retr
 grep "NANOCLAW_SDK" .env 2>/dev/null || echo "not set (defaults to claude)"
 ```
 
-If `NANOCLAW_SDK=copilot` is already set, skip to Phase 3 (Verify).
+If `NANOCLAW_SDK=copilot` is already set, skip to Phase 4 (Verify).
 
-## Phase 2: Configure
+## Phase 2: Authenticate
 
-### Choose authentication method
+AskUserQuestion: How do you want to authenticate?
 
-AskUserQuestion: How do you want to authenticate GitHub Copilot?
+- **Token** — create a fine-grained PAT on GitHub and paste it into `.env`
+- **OAuth login** — run `copilot login` device flow inside the container (requires container to be built first)
 
-- **GITHUB_TOKEN** — paste a personal access token or GitHub App token with Copilot access
-- **OAuth login** — run `copilot auth login` interactively (stores credentials in `~/.copilot/`)
+---
 
-**If GITHUB_TOKEN:**
+### Option A: Token
 
-Add to `.env`:
+The SDK reads `COPILOT_GITHUB_TOKEN` from the environment.
+
+**Token requirements:**
+
+- Must be a **fine-grained PAT** or **OAuth token** (`gho_` / `ghu_` prefix)
+- Classic PATs (`ghp_` prefix) are **not supported** by the Copilot SDK
+- Your GitHub account must have an active Copilot subscription
+
+**How to create a fine-grained PAT:**
+
+1. Go to https://github.com/settings/personal-access-tokens/new
+2. Give it a name (e.g. `nanoclaw-copilot`)
+3. Set expiration as needed
+4. Under **Permissions → Account permissions**, grant `GitHub Copilot` → `Read-only`
+5. Click **Generate token** and copy it
+
+Ask the user to paste the token. Verify it does not start with `ghp_`. Add to `.env`:
 
 ```
-GITHUB_TOKEN=ghp_your_token_here
+COPILOT_GITHUB_TOKEN=<paste token here>
 ```
 
-Ask the user to paste their token, then write it.
+Skip to Phase 3.
 
-**If OAuth login:**
+---
 
-Run:
+### Option B: OAuth device flow
+
+The `copilot` binary is bundled inside the container (via `@github/copilot-sdk` → `@github/copilot` npm package). It is not available on the host OS. We run it once interactively to complete device flow and persist the credentials to a host directory.
+
+**Step 1: Build the container first** (skip if already built)
 
 ```bash
-npx @github/copilot auth login
+./container/build.sh
 ```
 
-Follow the prompts. When done, confirm credentials exist:
+**Step 2: Determine your container runtime** (Docker or Apple Container)
 
 ```bash
-ls ~/.copilot/ && echo "OK"
+docker info &>/dev/null && echo "docker" || echo "apple-container"
 ```
 
-The `~/.copilot/` directory is automatically bind-mounted into containers read-only — no further configuration needed.
+**Step 3: Create the credential directory on the host**
 
-### Set the SDK backend
+```bash
+mkdir -p ~/.nanoclaw-copilot
+```
 
-Add to `.env`:
+**Step 4: Run one-off interactive login**
+
+For Docker:
+
+```bash
+docker run -it --rm \
+  -v "$HOME/.nanoclaw-copilot:/home/node/.config/github-copilot" \
+  --user node \
+  nanoclaw-agent \
+  bash -c "/app/node_modules/.bin/copilot login"
+```
+
+For Apple Container:
+
+```bash
+container run -it --rm \
+  --volume "$HOME/.nanoclaw-copilot:/home/node/.config/github-copilot" \
+  --user node \
+  nanoclaw-agent \
+  bash -c "/app/node_modules/.bin/copilot login"
+```
+
+Follow the device flow: it prints a code and a URL. Open the URL in your browser, enter the code, and authorize.
+
+**Step 5: Verify credentials were saved**
+
+```bash
+ls ~/.nanoclaw-copilot/
+```
+
+You should see a `hosts.json` file (or similar). If the directory is empty, the binary may store creds in a different path — check inside the container:
+
+```bash
+docker run -it --rm --user node nanoclaw-agent bash -c \
+  "ls /home/node/.config/ /home/node/.local/share/ 2>/dev/null"
+```
+
+Identify the correct path and repeat Step 3-4 with the matching host-to-container mount.
+
+**Step 6: Enable the credential mount**
+
+The host directory `~/.nanoclaw-copilot` will be passed into all future containers. Add to `.env`:
+
+```
+COPILOT_OAUTH_DIR=~/.nanoclaw-copilot
+```
+
+Then update `src/container-runner.ts` — in `buildVolumeMounts`, add:
+
+```typescript
+const copilotOAuthDir = process.env.COPILOT_OAUTH_DIR?.replace(
+  /^~/,
+  process.env.HOME || '/root',
+);
+if (copilotOAuthDir && fs.existsSync(copilotOAuthDir)) {
+  mounts.push({
+    hostPath: copilotOAuthDir,
+    containerPath: '/home/node/.config/github-copilot',
+    readonly: true,
+  });
+}
+```
+
+---
+
+## Phase 3: Configure
+
+Enable the Copilot backend. Add to `.env`:
 
 ```
 NANOCLAW_SDK=copilot
@@ -80,9 +174,9 @@ COPILOT_MODEL=<model>
 
 Available models include: `gpt-4.1`, `gpt-4o`, `claude-3.7-sonnet`, `o3`.
 
-## Phase 3: Rebuild Container
+### Rebuild container
 
-The agent-runner must be rebuilt to pick up the `@github/copilot-sdk` dependency:
+The agent-runner must be rebuilt to pick up the `@github/copilot-sdk` dependency inside the container:
 
 ```bash
 ./container/build.sh
@@ -90,7 +184,7 @@ The agent-runner must be rebuilt to pick up the `@github/copilot-sdk` dependency
 
 This takes a minute or two. Wait for it to finish.
 
-## Phase 4: Restart Service
+### Restart service
 
 ```bash
 # macOS
@@ -106,7 +200,7 @@ Or if running in dev mode, stop and rerun:
 npm run dev
 ```
 
-## Phase 5: Verify
+## Phase 4: Verify
 
 Send a test message from your channel. Check logs for confirmation:
 
@@ -118,7 +212,7 @@ You should see:
 
 ```
 Using SDK backend: copilot
-Copilot auth: using GITHUB_TOKEN env var   (or: using OAuth credentials)
+Copilot auth: using COPILOT_GITHUB_TOKEN env var
 Creating Copilot session (model: gpt-4.1, resume: new)
 Copilot session ready: <sessionId>
 ```
@@ -128,17 +222,23 @@ Copilot session ready: <sessionId>
 To revert to Claude, remove or comment out `NANOCLAW_SDK` in `.env`:
 
 ```bash
+# macOS
 sed -i '' 's/^NANOCLAW_SDK=copilot/# NANOCLAW_SDK=copilot/' .env
+
+# Linux
+sed -i 's/^NANOCLAW_SDK=copilot/# NANOCLAW_SDK=copilot/' .env
 ```
 
 Then restart the service.
 
 ## Troubleshooting
 
-**"No Copilot authentication found"** — `GITHUB_TOKEN` is not set and `~/.copilot/` is missing. Re-run Phase 2.
+**"No Copilot authentication found"** — `COPILOT_GITHUB_TOKEN` is not set or the container was not restarted after editing `.env`. Check `.env`, then restart the service.
 
-**"Cannot find module '@github/copilot-sdk'"** — Container was not rebuilt. Run `./container/build.sh`.
+**"Cannot find module '@github/copilot-sdk'"** — Container was not rebuilt after adding the SDK. Run `./container/build.sh`.
 
-**Copilot session error / 401** — Token lacks Copilot access. Ensure the PAT has `copilot` scope or your account has an active Copilot subscription.
+**Copilot session error / 401 Unauthorized** — Token is invalid or lacks Copilot access. Verify the token is not a classic PAT (`ghp_`), and that the GitHub account has an active Copilot subscription. Generate a new fine-grained PAT and update `.env`.
 
-**Model not found** — Check available models in your Copilot plan. Fall back to `gpt-4.1` by unsetting `COPILOT_MODEL`.
+**Token starts with `ghp_` (classic PAT)** — Classic tokens are not supported. Generate a fine-grained PAT at https://github.com/settings/personal-access-tokens/new instead.
+
+**Model not found** — Check available models for your Copilot plan. Remove `COPILOT_MODEL` from `.env` to fall back to `gpt-4.1`.
