@@ -10,9 +10,15 @@ import {
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
+  COPILOT_GITHUB_TOKEN,
+  COPILOT_MODEL,
   DATA_DIR,
+  GITHUB_TOKEN,
   GROUPS_DIR,
+  HMD_API_ACCESS_TOKEN,
+  HMD_API_ENDPOINT_URL,
   IDLE_TIMEOUT,
+  NANOCLAW_SDK,
   ONECLI_URL,
   TIMEZONE,
 } from './config.js';
@@ -276,24 +282,15 @@ async function buildContainerArgs(
     );
   }
 
-  if (process.env.GITHUB_TOKEN) {
-    args.push('-e', `GITHUB_TOKEN=${process.env.GITHUB_TOKEN}`);
-  }
-  if (process.env.HMD_API_ACCESS_TOKEN) {
-    args.push('-e', `HMD_API_ACCESS_TOKEN=${process.env.HMD_API_ACCESS_TOKEN}`);
-  }
-  if (process.env.HMD_API_ENDPOINT_URL) {
-    args.push('-e', `HMD_API_ENDPOINT_URL=${process.env.HMD_API_ENDPOINT_URL}`);
-  }
-  if (process.env.NANOCLAW_SDK) {
-    args.push('-e', `NANOCLAW_SDK=${process.env.NANOCLAW_SDK}`);
-  }
-  if (process.env.COPILOT_GITHUB_TOKEN) {
-    args.push('-e', `COPILOT_GITHUB_TOKEN=${process.env.COPILOT_GITHUB_TOKEN}`);
-  }
-  if (process.env.COPILOT_MODEL) {
-    args.push('-e', `COPILOT_MODEL=${process.env.COPILOT_MODEL}`);
-  }
+  if (GITHUB_TOKEN) args.push('-e', `GITHUB_TOKEN=${GITHUB_TOKEN}`);
+  if (HMD_API_ACCESS_TOKEN)
+    args.push('-e', `HMD_API_ACCESS_TOKEN=${HMD_API_ACCESS_TOKEN}`);
+  if (HMD_API_ENDPOINT_URL)
+    args.push('-e', `HMD_API_ENDPOINT_URL=${HMD_API_ENDPOINT_URL}`);
+  if (NANOCLAW_SDK) args.push('-e', `NANOCLAW_SDK=${NANOCLAW_SDK}`);
+  if (COPILOT_GITHUB_TOKEN)
+    args.push('-e', `COPILOT_GITHUB_TOKEN=${COPILOT_GITHUB_TOKEN}`);
+  if (COPILOT_MODEL) args.push('-e', `COPILOT_MODEL=${COPILOT_MODEL}`);
 
   // Runtime-specific args for host gateway resolution
   args.push(...hostGatewayArgs());

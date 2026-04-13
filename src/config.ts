@@ -10,6 +10,12 @@ const envConfig = readEnvFile([
   'ASSISTANT_HAS_OWN_NUMBER',
   'ONECLI_URL',
   'TZ',
+  'GITHUB_TOKEN',
+  'NANOCLAW_SDK',
+  'COPILOT_GITHUB_TOKEN',
+  'COPILOT_MODEL',
+  'HMD_API_ACCESS_TOKEN',
+  'HMD_API_ENDPOINT_URL',
 ]);
 
 export const ASSISTANT_NAME =
@@ -52,6 +58,16 @@ export const CONTAINER_MAX_OUTPUT_SIZE = parseInt(
   10,
 ); // 10MB default
 export const ONECLI_URL = process.env.ONECLI_URL || envConfig.ONECLI_URL;
+export const GITHUB_TOKEN = process.env.GITHUB_TOKEN || envConfig.GITHUB_TOKEN;
+export const NANOCLAW_SDK = process.env.NANOCLAW_SDK || envConfig.NANOCLAW_SDK;
+export const COPILOT_GITHUB_TOKEN =
+  process.env.COPILOT_GITHUB_TOKEN || envConfig.COPILOT_GITHUB_TOKEN;
+export const COPILOT_MODEL =
+  process.env.COPILOT_MODEL || envConfig.COPILOT_MODEL;
+export const HMD_API_ACCESS_TOKEN =
+  process.env.HMD_API_ACCESS_TOKEN || envConfig.HMD_API_ACCESS_TOKEN;
+export const HMD_API_ENDPOINT_URL =
+  process.env.HMD_API_ENDPOINT_URL || envConfig.HMD_API_ENDPOINT_URL;
 export const MAX_MESSAGES_PER_PROMPT = Math.max(
   1,
   parseInt(process.env.MAX_MESSAGES_PER_PROMPT || '10', 10) || 10,
